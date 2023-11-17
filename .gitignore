@@ -1,0 +1,6 @@
+/tmp
+/front
+/deeplake
+/.venv
+/__pycache__
+*.zip
