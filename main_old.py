@@ -9,58 +9,16 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
 from deeplake.core.dataset import Dataset
 from cost import custo_embeddings_repo
-import inquirer
 
 # Cant continue w/o API key
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if OPENAI_API_KEY is None:
-    print("Chave da API não encontrada")
+    print("missing api key")
     exit(-1)
 
 # We'll be using OpenAI's embeddings
 EMBEDDINGS = OpenAIEmbeddings(disallowed_special=())
-
-print("Inicializando banco de dados...")
-
-db = DeepLake(embedding_function=EMBEDDINGS)
-
-print("Banco de dados inicializado! ")
-
-repos_list = [
-    'lodash',
-    'tiktoken'
-]
-
-# Pergunta ao usuário qual repositório ele deseja trabalhar
-questions = [
-    inquirer.List('repo',
-                  message="Qual repositório você deseja trabalhar?",
-                  choices=repos_list + ["Outro..."],
-              ),
-]
-
-answers = inquirer.prompt(questions)
-
-if answers['repo'] == "Outro...":
-    questions = [
-        inquirer.Text('repo',
-                      message="Digite a URL do repositório:"),
-    ]
-
-    answers = inquirer.prompt(questions)
-
-    # Adiciona o repositório ao banco de dados
-    
-
-
-
-# Seleciona o repositório escolhido pelo usuário
-repo = answers['repo']
-
-# ...
-
-
-
+TARGET_REPO = 'tiktoken-main'
 
 
 
