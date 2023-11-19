@@ -4,3 +4,7 @@
 /.venv
 /__pycache__
 *.zip
+main_old.py
+test1.md
+test2.md
+repos_list.pkl
