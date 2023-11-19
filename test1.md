@@ -1,1 +1,0 @@
-o nome do artista é: Silvio santos
