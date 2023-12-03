@@ -34,86 +34,100 @@ db = DeepLake(embedding_function=EMBEDDINGS)
 print("Banco de dados inicializado! ")
 
 REPO_LIST_FILE = "repos_list.pkl"
+
 repos_list = [ ]
+repoName = None
+qa_chain = None
 
 if os.path.exists(REPO_LIST_FILE):
     with open(REPO_LIST_FILE, 'rb') as file:
         repos_list = pickle.load(file)
 
-# Pergunta ao usuário qual repositório ele deseja trabalhar
-questions = [
-    inquirer.List('repo',
-                  message="Qual repositório você deseja trabalhar?",
-                  choices=repos_list + ["Outro..."],
-              ),
-]
-
-repoName = None
-answers = inquirer.prompt(questions)
-repoName = answers['repo']
-
-if repoName == "Outro...":
+def seleciona_repo():
+    global repoName
+    global repos_list
+    global qa_chain    
+    # Pergunta ao usuário qual repositório ele deseja trabalhar
     questions = [
-        inquirer.Text('repoURL',
-                      message="Digite a URL do repositório"),
+        inquirer.List('repo',
+                    message="Qual repositório você deseja trabalhar?",
+                    choices=repos_list + ["Outro..."],
+                ),
     ]
 
-    answers_other = inquirer.prompt(questions)
+    answers = inquirer.prompt(questions)
+    repoName = answers['repo']
 
-    # Adiciona o repositório ao banco de dados
-    repoURL = answers_other['repoURL']
+    if repoName == "Outro...":
+        questions = [
+            inquirer.Text('repoURL',
+                        message="Digite a URL do repositório"),
+        ]
 
-    assert repoURL is not None, "URL do repositório vazia, abortando..."
-    repoName, destination_folder = download_and_extract_repo(repoURL)
+        answers_other = inquirer.prompt(questions)
 
-    # Calcula o custo de adicionar o repositório ao banco de dados
-    total_tokens, custoUSD = custo_embeddings_repo(destination_folder)
+        # Adiciona o repositório ao banco de dados
+        repoURL = answers_other['repoURL']
 
-    # Exibe o custo em USD
-    print(f"Número total de tokens: {total_tokens}")
-    print(f"Custo em USD: {custoUSD:.2f}")
+        assert repoURL is not None, "URL do repositório vazia, abortando..."
+        repoName, destination_folder = download_and_extract_repo(repoURL)
 
-    # Confirma a geração dos embeddings
-    questions = [
-        inquirer.Confirm('confirmacao',
-                         message="Deseja gerar os embeddings?",
-                         default=True),
-    ]
+        # Calcula o custo de adicionar o repositório ao banco de dados
+        total_tokens, custoUSD = custo_embeddings_repo(destination_folder)
 
-    answers_other = inquirer.prompt(questions)
-    confirmacao = answers_other['confirmacao']
+        # Exibe o custo em USD
+        print(f"Número total de tokens: {total_tokens}")
+        print(f"Custo em USD: {custoUSD:.2f}")
 
-    if confirmacao:
-        # Gera os embeddings
-        #db.add_documents(repoName, all_docs)
-        db_add_repo_files(db, repoName, destination_folder)
-        
-        # Adicionando na lista de repositórios e salvando no disco
-        repos_list.append(repoName)
-        with open(REPO_LIST_FILE, 'wb') as file:
-            pickle.dump(repos_list, file)
+        # Confirma a geração dos embeddings
+        questions = [
+            inquirer.Confirm('confirmacao',
+                            message="Deseja gerar os embeddings?",
+                            default=True),
+        ]
 
-        # Apagando a pasta do repositório 
-        shutil.rmtree(destination_folder)    
+        answers_other = inquirer.prompt(questions)
+        confirmacao = answers_other['confirmacao']
 
-        print("Embeddings gerados com sucesso!")
-    else:
-        print("Geração dos embeddings cancelada.")
-        exit(0)
+        if confirmacao:
+            # Gera os embeddings
+            #db.add_documents(repoName, all_docs)
+            db_add_repo_files(db, repoName, destination_folder)
+            
+            # Adicionando na lista de repositórios e salvando no disco
+            repos_list.append(repoName)
+            with open(REPO_LIST_FILE, 'wb') as file:
+                pickle.dump(repos_list, file)
 
-# Seleciona o repositório escolhido pelo usuário
-retriever = db.as_retriever( search_kwargs={'distance_metric': 'cos', 'fetch_k': 100, 'maximal_marginal_relevance': True, 'k': 10, 'filter': {'metadata': { 'repo': repoName }}})
+            # Apagando a pasta do repositório 
+            shutil.rmtree(destination_folder)    
+
+            print("Embeddings gerados com sucesso!")
+        else:
+            print("Geração dos embeddings cancelada.")
+            exit(0)
+
+    # Seleciona o repositório escolhido pelo usuário
+    retriever = db.as_retriever( search_kwargs={'distance_metric': 'cos', 'fetch_k': 100, 'maximal_marginal_relevance': True, 'k': 10, 'filter': {'metadata': { 'repo': repoName }}})
+    model = ChatOpenAI(model='gpt-3.5-turbo')
+    qa_chain = ConversationalRetrievalChain.from_llm(model,retriever=retriever)
+
+seleciona_repo()
+
 chat_history = []
-model = ChatOpenAI(model='gpt-3.5-turbo')
-qa_chain = ConversationalRetrievalChain.from_llm(model,retriever=retriever)
 
 print("Inicializando chatbot...")
 while True:
-    question = input("Digite sua pergunta: ")
+    print(" para sair, digite \"exit\" ou \"sair\", para voltar a seleção de repositório, digite \"voltar\"")
+    question = input(f"({repoName}) - Digite sua pergunta: ")
     if question == "exit"  or question == "sair" or question == "":
-        break
+        break;
+    if question == "voltar":
+        seleciona_repo()
+        chat_history = []
+        continue
     result = qa_chain({"question": question, "chat_history": chat_history})
     #print all keys from result
-    print(result.keys())
+    #print(result.keys())
     chat_history.append((question, result['answer']))    
     print(f" >>>>> : {result['answer']} \n")

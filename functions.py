@@ -1,4 +1,5 @@
 import os
+from bs4 import BeautifulSoup
 import requests
 import io
 from zipfile import ZipFile
@@ -13,6 +14,26 @@ EXTENSOES_DEV = ["py", "js", "ts", "html", "css", "scss", "json", "xml", "yml", 
 
 TMP_DIR = "tmp"
 
+import requests
+
+def main_repository_branchname(url):
+    # Fazendo a requisição para obter o HTML da página
+    response = requests.get(url)
+    if response.status_code != 200:
+        return "Erro ao acessar o repositório"
+
+    # Analisando o HTML com BeautifulSoup
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # Procurando pela tag que contém o nome do branch principal
+    # O seletor usado aqui é um exemplo e pode precisar ser ajustado
+    branch_tag = soup.find('span', {'class': 'css-truncate-target'})
+    if branch_tag:
+        return branch_tag.get_text(strip=True)
+    else:
+        raise Exception("Nome do branch principal não encontrado")
+
+
 def download_and_extract_repo(url):
     # cria um diretorio tmp se não existir    
     os.makedirs(TMP_DIR, exist_ok=True)
@@ -20,8 +41,10 @@ def download_and_extract_repo(url):
     # Extrai o nome do repositório da URL
     repo_name = url.split("/")[-1].replace(".git", "")
     
+    main_branch = main_repository_branchname(url)
+
     # Faz o download do arquivo zip do repositório
-    zip_url = f"{url}/archive/refs/heads/main.zip"
+    zip_url = f"{url}/archive/refs/heads/{main_branch}.zip"
     response = requests.get(zip_url)
     
     # Cria uma pasta com o nome do repositório e extrai o conteúdo do zip nela
