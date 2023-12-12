@@ -19,7 +19,10 @@ def init_db():
 def load_repos_list():
     if os.path.exists(REPO_LIST_FILE):
         with open(REPO_LIST_FILE, 'rb') as file:
-            return pickle.load(file)
+            repo_list = pickle.load(file)
+            #remove duplicates
+            repo_list = list(dict.fromkeys(repo_list))
+            return repo_list
     return []
 
 # Configuração de variáveis globais e estado de sessão
@@ -50,24 +53,43 @@ if 'chat_history' not in st.session_state:
     init_chat_history()
 
 with st.container():    
-    st.title("🔎 LangChain - Chat com Repositórios GitHub")
+    st.title("Chat com Repositórios GitHub")
 
     # Seleção de Repositório
     selected_repo = st.selectbox("Escolha um repositório", options=st.session_state.repos_list + ["Adicionar novo..."])
 
-    # Adicionar novo Repositório
     if selected_repo == "Adicionar novo...":
         repo_url = st.text_input("Digite a URL do repositório")
         if st.button("Processar Repositório"):
             repo_name, destination_folder = download_and_extract_repo(repo_url)
             total_tokens, custoUSD = custo_embeddings_repo(destination_folder)
-            if st.confirm(f"Custo: {custoUSD:.2f} USD. Deseja continuar?"):
-                db_add_repo_files(st.session_state.db, repo_name, destination_folder)
-                st.session_state.repos_list.append(repo_name)
-                with open(REPO_LIST_FILE, 'wb') as file:
-                    pickle.dump(st.session_state.repos_list, file)
-                shutil.rmtree(destination_folder)
-                st.success("Repositório adicionado com sucesso!")    
+            st.write(f"Total de tokens: {total_tokens}")
+            st.write(f"Custo: {custoUSD:.2f} USD")
+            
+            # Guardar informações no estado da sessão
+            st.session_state['processar_repositorio'] = True
+            st.session_state['repo_name'] = repo_name
+            st.session_state['destination_folder'] = destination_folder
+
+    if 'processar_repositorio' in st.session_state:
+        st.write("Deseja continuar?")
+        if st.button("Não"):
+            print("Repositório não adicionado")
+            shutil.rmtree(st.session_state['destination_folder'])            
+            del st.session_state['processar_repositorio']            
+            st.experimental_rerun()
+            
+        if st.button("Sim"):
+            print("Adicionando repositório...")
+            db_add_repo_files(st.session_state.db, st.session_state['repo_name'], st.session_state['destination_folder'])
+            st.session_state.repos_list.append(st.session_state['repo_name'])
+            with open(REPO_LIST_FILE, 'wb') as file:
+                pickle.dump(st.session_state.repos_list, file)
+            shutil.rmtree(st.session_state['destination_folder'])            
+            del st.session_state['processar_repositorio']
+            print("Repositório adicionado com sucesso!")
+            st.experimental_rerun()
+            
 
 
 # Chat
@@ -85,37 +107,16 @@ if 'qa_chain' not in st.session_state or selected_repo != st.session_state.get('
     init_chat_history()
 
 # Input do usuário
-with st.container():
-    # user_input = st.text_input("Digite sua pergunta", key="chat_input")
-    # if st.button("Enviar Pergunta") and user_input:
-    #     # Adicionar pergunta do usuário ao chat_history
-    #     #st.session_state.chat_history.append({"text": user_input, "is_user": True})
-    #     #st.session_state.chat_history.append((user_input, result['answer']))
+user_input = st.chat_input('Digite sua pergunta', key="chat_input")
+if user_input:    
+    # Conversão do chat_history para o formato LangChain
+    langchain_history = [(msg["message"], "user" if msg["is_user"] else "system") for msg in st.session_state.chat_history]
 
-    #     # Obter resposta e adicionar ao chat_history
-    #     langchain_history = [(msg["message"], msg["is_user"]) for msg in st.session_state.chat_history]        
-    #     result = st.session_state.qa_chain({"question": user_input, "chat_history": langchain_history})
-    #     #st.session_state.chat_history.append({"text": result['answer'], "is_user": False})
-    #     st.session_state.chat_history.append({"message": user_input, "is_user": True})
-    #     st.session_state.chat_history.append({"message": result['answer'], "is_user": False})
-        
-    #     st.session_state["chat_input"] = ""
-    user_input = st.text_input("Digite sua pergunta", key="user_input")
+    # Processamento da pergunta
+    result = st.session_state.qa_chain({"question": user_input, "chat_history": langchain_history})
 
-    # Botão invisível para resetar o formulário
-    #reset_button = st.button("Reset", key="reset_button", on_click=lambda: st.session_state.update(user_input=""), args=())
+    # Adiciona pergunta e resposta ao chat_history
+    st.session_state.chat_history.append({"message": user_input, "is_user": True})
+    st.session_state.chat_history.append({"message": result['answer'], "is_user": False})
 
-    if st.button("Enviar Pergunta"):
-        if user_input:
-            # Conversão do chat_history para o formato LangChain
-            langchain_history = [(msg["message"], "user" if msg["is_user"] else "system") for msg in st.session_state.chat_history]
-
-            # Processamento da pergunta
-            result = st.session_state.qa_chain({"question": user_input, "chat_history": langchain_history})
-
-            # Adiciona pergunta e resposta ao chat_history (formato st-chat)
-            st.session_state.chat_history.append({"message": user_input, "is_user": True})
-            st.session_state.chat_history.append({"message": result['answer'], "is_user": False})
-
-            # Aciona o botão de reset para limpar o input
-            #st.session_state.reset_button = True    
+    st.experimental_rerun()

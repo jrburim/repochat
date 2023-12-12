@@ -1,4 +1,5 @@
 import os
+import shutil
 from bs4 import BeautifulSoup
 import requests
 import io
@@ -27,14 +28,16 @@ def main_repository_branchname(url):
 
     # Procurando pela tag que contém o nome do branch principal
     # O seletor usado aqui é um exemplo e pode precisar ser ajustado
-    branch_tag = soup.find('span', {'class': 'css-truncate-target'})
+    #branch_tag = soup.find('span', {'class': 'css-truncate-target', 'data-menu-button': ''})
+    branch_tag = soup.find(lambda tag: tag.name == 'span' and tag.get('class') == ['css-truncate-target'] and tag.has_attr('data-menu-button'))
+
     if branch_tag:
         return branch_tag.get_text(strip=True)
     else:
         raise Exception("Nome do branch principal não encontrado")
 
 
-def download_and_extract_repo(url):
+def download_and_extract_repo(url):    
     # cria um diretorio tmp se não existir    
     os.makedirs(TMP_DIR, exist_ok=True)
 
@@ -42,13 +45,20 @@ def download_and_extract_repo(url):
     repo_name = url.split("/")[-1].replace(".git", "")
     
     main_branch = main_repository_branchname(url)
+    print(f"Branch principal: {main_branch}")
 
     # Faz o download do arquivo zip do repositório
     zip_url = f"{url}/archive/refs/heads/{main_branch}.zip"
+    print(f"Baixando {zip_url}...")
     response = requests.get(zip_url)
     
     # Cria uma pasta com o nome do repositório e extrai o conteúdo do zip nela
     destination_folder = os.path.join(TMP_DIR, repo_name)
+
+    # Apaga o diretório se ele já existir
+    if os.path.exists(destination_folder):
+        shutil.rmtree(destination_folder)
+
     os.makedirs(destination_folder, exist_ok=True)
     with ZipFile(io.BytesIO(response.content)) as zip_file:
         zip_file.extractall(destination_folder)
