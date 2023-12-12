@@ -1,8 +1,17 @@
 # Sobre o Projeto
 
-Este projeto é uma aplicação de chatbot que utiliza a API da OpenAI para responder perguntas baseadas em repositórios do GitHub. O chatbot é capaz de processar repositórios, adicionar novos repositórios e responder perguntas com base no conteúdo do repositório selecionado.
+SENAC - Projetos 2 - Chat com repositórios do GitHub
+
+Este projeto é uma aplicação de chatbot que utiliza a LangChain (com o LLM da OpenAI) para responder perguntas baseadas em repositórios do GitHub. O chatbot é capaz de processar repositórios, adicionar novos repositórios e responder perguntas com base no conteúdo do repositório selecionado.
 
 O arquivo principal do projeto é o `chat.py`, que contém a lógica principal do chatbot e a interface do usuário.
+
+## Autores
+
+- Alexandre Moraes de Souza Lima
+- Edgard de Souza Lemos Junior
+- Luiz Antonio Burim Junior
+- Mauricio dos Santos Menandro
 
 ## chat.py
 
@@ -18,7 +27,7 @@ O `chat.py` é o arquivo principal do projeto. Ele utiliza a biblioteca Streamli
 - Inicialização do chatbot
 - Processamento de perguntas do usuário
 
-Depois de instalar o Streamlit, você pode iniciar o aplicativo com o seguinte comando:
+Depois de instalar as dependências, você pode iniciar o aplicativo com o seguinte comando:
 
 ```bash
 streamlit run chat.py
