@@ -1,7 +1,7 @@
 import os
 import pickle
 
-# pip install --upgrade langchain deeplake openai tiktoken
+# Importando as bibliotecas necessárias
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import DeepLake
 from langchain.document_loaders import TextLoader
@@ -12,41 +12,49 @@ from deeplake.core.dataset import Dataset
 import inquirer
 import shutil
 
+# Importando as funções definidas em outro arquivo
 from functions import custo_embeddings_repo, db_add_repo_files, download_and_extract_repo
 
-# Cant continue w/o API key
+# Verificando se a chave da API da OpenAI está definida
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if OPENAI_API_KEY is None:
     print("Chave da API não encontrada")
     exit(-1)
 
-# We'll be using OpenAI's embeddings
+# Definindo as embeddings que serão usadas (neste caso, as embeddings da OpenAI)
 EMBEDDINGS = OpenAIEmbeddings(disallowed_special=())
 
 print("Inicializando banco de dados...")
 
+# Removendo o arquivo de bloqueio do banco de dados, se existir
 arquivo_lock = "deeplake/dataset_lock.lock"
 if os.path.exists(arquivo_lock):
     os.remove(arquivo_lock)
 
+# Inicializando o banco de dados
 db = DeepLake(embedding_function=EMBEDDINGS)
 
 print("Banco de dados inicializado! ")
 
+# Definindo o arquivo onde a lista de repositórios será armazenada
 REPO_LIST_FILE = "repos_list.pkl"
 
+# Inicializando a lista de repositórios
 repos_list = [ ]
 repoName = None
 qa_chain = None
 
+# Carregando a lista de repositórios do arquivo, se ele existir
 if os.path.exists(REPO_LIST_FILE):
     with open(REPO_LIST_FILE, 'rb') as file:
         repos_list = pickle.load(file)
 
+# Função para selecionar um repositório
 def seleciona_repo():
     global repoName
     global repos_list
     global qa_chain    
+
     # Pergunta ao usuário qual repositório ele deseja trabalhar
     questions = [
         inquirer.List('repo',
@@ -58,6 +66,7 @@ def seleciona_repo():
     answers = inquirer.prompt(questions)
     repoName = answers['repo']
 
+    # Se o usuário escolher "Outro...", pede para ele digitar a URL do repositório
     if repoName == "Outro...":
         questions = [
             inquirer.Text('repoURL',
@@ -91,7 +100,6 @@ def seleciona_repo():
 
         if confirmacao:
             # Gera os embeddings
-            #db.add_documents(repoName, all_docs)
             db_add_repo_files(db, repoName, destination_folder)
             
             # Adicionando na lista de repositórios e salvando no disco
@@ -112,11 +120,14 @@ def seleciona_repo():
     model = ChatOpenAI(model='gpt-3.5-turbo')
     qa_chain = ConversationalRetrievalChain.from_llm(model,retriever=retriever)
 
+# Chamando a função para selecionar um repositório
 seleciona_repo()
 
+# Inicializando o histórico do chat
 chat_history = []
 
 print("Inicializando chatbot...")
+# Loop principal do chatbot
 while True:
     print(" para sair, digite \"exit\" ou \"sair\", para voltar a seleção de repositório, digite \"voltar\"")
     question = input(f"({repoName}) - Digite sua pergunta: ")
@@ -127,7 +138,5 @@ while True:
         chat_history = []
         continue
     result = qa_chain({"question": question, "chat_history": chat_history})
-    #print all keys from result
-    #print(result.keys())
     chat_history.append((question, result['answer']))    
     print(f" >>>>> : {result['answer']} \n")

@@ -2,7 +2,7 @@
 
 SENAC - Projetos 2 - Chat com repositórios do GitHub
 
-Este projeto é uma aplicação de chatbot que utiliza a LangChain (com o LLM da OpenAI) para responder perguntas baseadas em repositórios do GitHub. O chatbot é capaz de processar repositórios, adicionar novos repositórios e responder perguntas com base no conteúdo do repositório selecionado.
+Este repositório é uma aplicação de chatbot que utiliza a LangChain (com o LLM da OpenAI) para responder perguntas baseadas em repositórios do GitHub. O chatbot é capaz de processar repositórios, adicionar novos repositórios e responder perguntas com base no conteúdo do repositório selecionado.
 
 O arquivo principal do projeto é o `chat.py`, que contém a lógica principal do chatbot e a interface do usuário.
 
